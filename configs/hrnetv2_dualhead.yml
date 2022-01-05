@@ -1,0 +1,95 @@
+# This is sample of config file
+# Task config
+task: ["segmentation", "edge"]
+
+# Running Parameters
+parameters:
+  work_dir: "./experiments"
+  checkpoint: null
+  train:
+    max_epoch: 30
+    device: gpu
+    gpu_ids: 0,1
+    batch_size: 32
+  test:
+    device: gpu
+    gpu_ids: 0,1
+    batch_size: 1
+  val:
+    device: gpu
+    gpu_ids: 0,1
+    batch_size: 12
+
+# Mode config
+model:
+  # If use backbone + head
+  backbones:
+    name: HRNetV2
+    in_channels: 4
+    pretrain: true
+  heads:
+    name: DualHead
+    head1:
+      name: CNHead
+      num_layers: 3
+      num_classes: 1
+    head2:
+      name: CNHead
+      num_layers: 2
+      num_classes: 4
+    fc_dim: 720
+    deep_sup: false
+    concatenate: true
+  # If use model
+  # name: UNet
+
+# Dataset config
+dataset:
+  name: ImageTaskDataset
+  input_type: rgbd
+  use_dims: 4
+  train:
+    root: ./data/sample/train
+    pipelines:
+      - name: Resize
+        size: 480
+      - name: ToTensor
+  test:
+    root: ./data/sample/test
+    pipelines:
+      - name: Resize
+        size: 480
+      - name: ToTensor
+  # ``val`` is optional
+  # val:
+  #   root: ./data/sample/val
+  #   pipelines:
+  #     - name: Resize
+  #       size: 480
+  #     - name: ToTensor
+
+# Loss config
+loss:
+  name: MultiTaskLoss
+  segmentation:
+    name: DiceBCELoss
+    weight: 1.0
+  edge:
+    name: RCFCrossEntropy
+    weight: 1.0
+
+# Evaluation config
+evaluation:
+  segmentation:
+    methods: [pxacc, miou]
+  edge:
+    methods: [ois, ods]
+
+# Optimizer config
+optimizer:
+  name: Adam
+
+# Scheduler config
+scheduler:
+  name: ExponentialLR
+  gamma: 0.95

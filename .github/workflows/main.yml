@@ -1,0 +1,89 @@
+name: CI/CD
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - develop/*
+      - feature/*
+  pull_request:
+    branches-ignore:
+      - main
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [2.7, 3.6, 3.7, 3.8]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          token: ${{ secrets.PRIVATE_ACCESS_TOKEN }}
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version}}
+
+      - name: Install dependencies
+        run: |
+          if ["${{ matrix.python-version }}" = "2.7"]; then
+            sudo apt-get install python-pyqt5
+          else
+            sudo apt-get install python3-pyqt5
+          fi
+          python -m pip install -U pip
+          pip install setuptools
+          pip install -r requirements/requirements_test.txt --no-cache-dir
+
+      - name: Invoking flake8
+        run: flake8 --max-line-length=120 --ignore W605,E203,W503,W504
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          token: ${{ secrets.PRIVATE_ACCESS_TOKEN }}
+
+      - name: Setup CUDA
+        uses: Jimver/cuda-toolkit@v0.2.4
+        id: cuda-toolkit
+        with:
+          cuda: '11.1.1'
+
+      - name: Set CUDA path
+        run: |
+          export PATH=${{steps.cuda-toolkit.outputs.CUDA_PATH}}/bin:${PATH}
+          export LD_LIBRARY_PATH=${{steps.cuda-toolkit.outputs.CUDA_PATH}}/lib64:${LD_LIBRARY_PATH}
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version}}
+
+      - name: Install dependencies
+        run: |
+          if ["${{ matrix.python-version }}" = "2.7"]; then
+            sudo apt-get install python-pyqt5
+          else
+            sudo apt-get install python3-pyqt5
+          fi
+          python -m pip install -U pip
+          pip install setuptools
+          pip install -r requirements/requirements_test.txt --no-cache-dir
+          pip install torch==1.9.1+cu111 torchvision==0.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html --no-cache-dir
+
+      - name: Run Unittest
+        run: |
+          pytest -v -s tests/

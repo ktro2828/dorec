@@ -1,0 +1,16 @@
+coloredlogs
+gdown
+imgviz
+labelme
+matplotlib
+numpy
+opencv-python==4.2.0.32
+pandas
+pillow
+python-box
+pyyaml
+scikit-image
+scikit-learn
+tensorboard
+tqdm
+yapf
