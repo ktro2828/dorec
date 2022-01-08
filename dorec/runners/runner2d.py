@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os.path as osp
-from random import random
+import random
 
 import torch
 from tqdm import tqdm
@@ -47,7 +47,8 @@ class Runner2d(RunnerBase):
         train_avg_meters = self.set_avg_meters()
         val_avg_meters = self.set_avg_meters()
 
-        for self.epoch in range(1, self.max_epoch + 1):
+        for epoch in range(1, self.max_epoch + 1):
+            self.epoch = epoch
             model.train()
             self._reset_avg_meters(train_avg_meters)
 
@@ -57,20 +58,17 @@ class Runner2d(RunnerBase):
                 losses, _ = self._forward_one_epoch(
                     sample, model, train_avg_meters)
 
-                if len(self.task):
-                    losses["total"].backward()
-                else:
-                    losses[self.task[0]].backward()
+                losses["total"].backward()
                 optimizer.step()
 
-                # --- VALIDATION ---
-                self._evaluate(model, val_dataloader,
-                               val_avg_meters, optimizer=optimizer)
+            # --- VALIDATION ---
+            self._evaluate(model, val_dataloader,
+                           val_avg_meters, optimizer=optimizer)
 
-                if scheduler.name == "ReduceLROnPlateau":
-                    scheduler.step(val_avg_meters["losses"]["loss"].val)
-                else:
-                    scheduler.step()
+            if scheduler.name == "ReduceLROnPlateau":
+                scheduler.step(val_avg_meters["losses"]["loss"].val)
+            else:
+                scheduler.step()
 
     def _forward_one_epoch(self, sample, model, avg_meters):
         """Train method for one epoch
@@ -107,7 +105,6 @@ class Runner2d(RunnerBase):
         test_avg_meters = self.set_avg_meters()
 
         self._evaluate(model, test_dataloader, test_avg_meters)
-        self._logging_results(test_avg_meters)
 
     def _evaluate(self, model, dataloader, avg_meters, optimizer=None):
         """Evaluation method, which used in test/val phase
@@ -123,8 +120,24 @@ class Runner2d(RunnerBase):
             self._reset_avg_meters(avg_meters)
 
             for sample in tqdm(dataloader):
-                self._forward_one_epoch(sample, model, avg_meters)
+                images = sample["inputs"].to(self.device)
+                targets = sample["targets"]
+                for key, item in targets.items():
+                    targets[key] = item.to(self.device)
 
+                outputs = model(images)
+                losses = self.criterion(outputs, targets)
+                scores = do_evaluate(self.evaluation_cfg, outputs, targets)
+
+                self._record_results(avg_meters, losses, scores)
+
+            # Visualize result
+            self.visualize(images, outputs)
+
+            # Logging evaluate results
+            self._logging_results(avg_meters)
+
+            # Save checkpoint
             checkpoint_path = osp.join(
                 self.checkpoint_dir, model.name + "{}.pth".format(self.epoch))
             self.save_checkpoint(model, checkpoint_path, optimizer=optimizer)
@@ -133,7 +146,7 @@ class Runner2d(RunnerBase):
         """
         Args:
             imgs (torch.Tensor): (B, C, H, W): Input images
-            maps (torch.Tensor): (B, N, H, W): Ouputs or GTs
+            maps (dict[str, torch.Tensor]): (B, N, H, W): Ouputs or GTs
             num_try (int, optional): number of try
             vis_random (bool, optional): whether visualize randomly
         """
@@ -150,7 +163,11 @@ class Runner2d(RunnerBase):
             else:
                 one_img = imgs[idx][0, :, :]
 
-            filepath = osp.join(self.result_dir, self.pic_cnt + ".jpg")
+            for key, item in maps.items():
+                maps[key] = item[idx]
+
+            self.viz_cnt += 1
+            filepath = osp.join(self.vizdir, str(self.viz_cnt) + ".jpg")
             do_visualize(maps, imgs=one_img, filepath=filepath)
 
     def show_data(self, max_try=10):

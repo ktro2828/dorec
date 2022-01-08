@@ -27,36 +27,26 @@ class KeypointTaskDataset(ImageTaskDataset):
     def _load_keypoints(self, idx):
         data = self.tp.get_keypoints(idx)
         pos, vis, in_pic = load_keypoint(data)
-        out = {
-            "keypoints": {
-                "pos": pos,
-                "vis": vis,
-                "in_pic": in_pic
-            }
-        }
-        return out
+        return pos, vis, in_pic
 
     def __getitem__(self, idx):
         images = self._load_inputs(idx)
         img_targets = self._load_targets(idx)
-        kpt_targets = self._load_keypoints(idx)
+        pos, vis, in_pic = self._load_keypoints(idx)
 
         targets = {}
         targets.update(img_targets)
-        targets.update(kpt_targets)
+        targets.update({"keypoint": pos})
         data = {"inputs": images, "targets": targets}
         data = self.transform(data)
 
         h, w = data["inputs"].shape[1:]
         # Check keypoints visivility
-        kpts_data = data["targets"].pop("keypoints")
-        pos = kpts_data["pos"]
-        vis = kpts_data["vis"]
-        in_pic = kpts_data["in_pic"]
-        pos, vis, in_pic = check_keypoint(w, h, pos, vis, in_pic)
+        trans_pos = data["targets"].pop("keypoint")
+        pos, vis, in_pic = check_keypoint(w, h, trans_pos, vis, in_pic)
 
         # Generate heatmap
-        heatmap = gen_heatmap(w, h, in_pic, pos, self.gaussian_R)
+        heatmap = gen_heatmap(w, h, in_pic, trans_pos, self.gaussian_R)
 
         data["targets"]["keypoint"] = heatmap
 

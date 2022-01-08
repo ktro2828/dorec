@@ -24,7 +24,10 @@ def imshow_edge(
     Reutrns:
         np.ndarray: HxWx3 or HxW
     """
-    assert len(edge_map.shape) == 3, "expected `edge_map` is in shape 1xHxW"
+    if edge_map.ndim != 3:
+        raise ValueError(
+            "expected `edge_map` is in shape 1xHxW, but got {} dimensions".format(edge_map.ndim))
+
     if isinstance(edge_map, torch.Tensor):
         edge_map = probalize(edge_map)
         edge_map = edge_map.squeeze(0).cpu().detach().numpy()

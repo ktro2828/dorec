@@ -35,15 +35,15 @@ def parse_device(device, gpu_ids):
     Returns:
         device (torch.device)
     """
-    if device == "cpu":
-        device = torch.device("cpu")
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
-    else:
+    if device == "gpu":
         if not torch.cuda.is_available():
             raise Exception("Cannot find cuda device")
         logger.info("cuda visible devices: {}".format(gpu_ids))
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_ids)
         device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
     logger.info("Use device: {}".format(device))
 

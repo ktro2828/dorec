@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 from dorec.core import TRANSFORMS
-from dorec import GT_IMAGE_TYPES, GT_GEOMETRY_TYPES
+from dorec import GT_IMAGE_TYPES, GT_GEOMETRY_TYPES, TASK_GTMAP
 
 from .base import TransformBase
 from .utils import warp_perspective, imrotate
@@ -216,19 +216,18 @@ class RandomRotate(TransformBase):
                 interpolation="nearest"
             )
 
-            for img_type in GT_IMAGE_TYPES:
-                if data["targets"].get(img_type) is not None:
-                    data["targets"][img_type] = imrotate(
-                        data["targets"][img_type],
+            for task, item in data["targets"].items():
+                gt_type = TASK_GTMAP[task]
+                if gt_type in GT_IMAGE_TYPES:
+                    data["targets"][task] = imrotate(
+                        item,
                         angle=degree,
                         border_value=self.pad_val,
                         center=self.center,
                         auto_bound=self.auto_bound,
                         interpolation="nearest"
                     )
-
-            for geo_type in GT_GEOMETRY_TYPES:
-                if data["targets"].get(geo_type) is not None:
+                elif gt_type in GT_GEOMETRY_TYPES:
                     raise NotImplementedError(
                         "RandomRotate for geometry data is under construction"
                     )
@@ -258,20 +257,17 @@ class VerticalFlip(TransformBase):
         if random.random() < self.p:
             data["inputs"] = np.flipud(data["inputs"]).copy()
 
-            for img_type in GT_IMAGE_TYPES:
-                if data["targets"].get(img_type) is not None:
-                    data["targets"][img_type] = np.flipud(
-                        data["targets"][img_type]).copy()
-
-            for geo_type in GT_GEOMETRY_TYPES:
-                if data["targets"].get(geo_type) is not None:
+            for task, item in data["targets"].items():
+                gt_type = TASK_GTMAP[task]
+                if gt_type in GT_IMAGE_TYPES:
+                    data["targets"][task] = np.flipud(item).copy()
+                elif gt_type in GT_GEOMETRY_TYPES:
                     h = data["inputs"].shape[0]
-                    geo = data[geo_type]
-                    geo[:, 1] = h - geo[:, 1]
-                    tmp = deepcopy(geo)
-                    geo[::2, :] = tmp[1::2, :]
-                    geo[1::2, :] = tmp[::2, :]
-                    data[geo_type] = geo
+                    item[:, 1] = h - item[:, 1]
+                    tmp = deepcopy(item)
+                    item[::2, :] = tmp[1::2, :]
+                    item[1::2, :] = tmp[::2, :]
+                    data["targets"][task] = item
 
         return data
 
@@ -298,17 +294,14 @@ class HorizontalFlip(TransformBase):
         if random.random() < self.p:
             data["inputs"] = np.flipud(data["inputs"]).copy()
 
-            for img_type in GT_IMAGE_TYPES:
-                if data["targets"].get(img_type) is not None:
-                    data["targets"][img_type] = np.fliplr(
-                        data["targets"][img_type]).copy()
-
-            for geo_type in GT_GEOMETRY_TYPES:
-                if data.get(geo_type) is not None:
+            for task, item in data["targets"].items():
+                gt_type = TASK_GTMAP[task]
+                if gt_type in GT_IMAGE_TYPES:
+                    data["targets"][task] = np.fliplr(item).copy()
+                elif gt_type in GT_GEOMETRY_TYPES:
                     w = data["inputs"].shape[1]
-                    geo = data[geo_type]
-                    geo[:, 0] = w - geo[:, 0]
-                    data[geo_type] = geo
+                    item[:, 0] = w - item[:, 0]
+                    data["targets"][task] = item
 
         return data
 

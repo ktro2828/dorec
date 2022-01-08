@@ -44,6 +44,10 @@ class RunnerBase(object):
         save_yaml(cfg_save_path, self.config.to_dict(), mode="w")
         logger.info("Config file is saved to: {}".format(cfg_save_path))
 
+        # Global epoch
+        self.epoch = 0
+        self.viz_cnt = 0
+
     def _init_parameters(self):
         """Initialize basic parameters from config"""
         self._config_name = self.config.name
@@ -64,11 +68,11 @@ class RunnerBase(object):
         self._work_dir = osp.join(
             self.config.work_dir, self.config_name + "_" + date_info)
         self._checkpoint_dir = osp.join(self.work_dir, "checkpoints")
-        self._result_dir = osp.join(self.work_dir, "results")
+        self._vizdir = osp.join(self.work_dir, "viz")
 
         makedirs(self.work_dir, exist_ok=True)
         makedirs(self.checkpoint_dir, exist_ok=True)
-        makedirs(self.result_dir, exist_ok=True)
+        makedirs(self.vizdir, exist_ok=True)
         logger.info("Working directory is: {}".format(self.work_dir))
 
     def _reset_phase_parameters(self):
@@ -80,6 +84,8 @@ class RunnerBase(object):
             self._device = parse_device(
                 self._parameters_cfg.test.device,
                 self._parameters_cfg.test.gpu_ids)
+            self._max_epoch = int(
+                self._parameters_cfg.test.get("max_epoch", 1))
         else:
             phase = "train"
             logger.info("****Train mode****")
@@ -88,8 +94,11 @@ class RunnerBase(object):
             self._device = parse_device(
                 self._parameters_cfg.train.device,
                 self._parameters_cfg.train.gpu_ids)
+            self._max_epoch = int(
+                self._parameters_cfg.train.get("max_epoch", 1))
 
-        self._max_epoch = int(self._parameters_cfg.get("max_epoch", 1))
+        self.epoch = 0
+        self.viz_cnt = 0
 
         logger.info("Parameters is reseted for: {}".format(phase))
 
@@ -187,8 +196,8 @@ class RunnerBase(object):
         return self._checkpoint_dir
 
     @property
-    def result_dir(self):
-        return self._result_dir
+    def vizdir(self):
+        return self._vizdir
 
     def train(self):
         """Execute train"""
@@ -220,14 +229,23 @@ class RunnerBase(object):
             - train_dataloader, val_dataloader (tuple[DataLoader]): if is_test=False
             - test_dataloader (torch.utils.data.DataLoader): if is_test=True
         """
+        dataset_cfg = self.dataset_cfg.copy()
+        train_dataset_cfg = dataset_cfg.pop("train")
+        test_dataset_cfg = dataset_cfg.pop("test")
+
+        if self.dataset_cfg.get("val") is not None:
+            val_dataset_cfg = dataset_cfg.pop("val")
+            val_dataset_cfg.update(dataset_cfg)
+            val_dataset_cfg.task = self.task
+        else:
+            val_dataset_cfg = None
+
+        train_dataset_cfg.update(dataset_cfg)
+        train_dataset_cfg.task = self.task
+        test_dataset_cfg.update(dataset_cfg)
+        test_dataset_cfg.task = self.task
+
         if self.is_test:
-            test_dataset_cfg = self.dataset_cfg.test
-            test_dataset_cfg.name = self.dataset_cfg.name
-            test_dataset_cfg.task = self.task
-            test_dataset_cfg.input_type = self.dataset_cfg.input_type
-            test_dataset_cfg.use_dims = self.dataset_cfg.use_dims
-            if "segmentation" in self.task:
-                test_dataset_cfg.num_classes = self.dataset_cfg.num_classes
             test_dataset = build_dataset(test_dataset_cfg)
             logger.info("Loaded dataset Test: {}".format(len(test_dataset)))
 
@@ -245,23 +263,7 @@ class RunnerBase(object):
             )
             return test_dataloader
 
-        train_dataset_cfg = self.dataset_cfg.train
-        train_dataset_cfg.name = self.dataset_cfg.name
-        train_dataset_cfg.task = self.task
-        train_dataset_cfg.input_type = self.dataset_cfg.input_type
-        train_dataset_cfg.use_dims = self.dataset_cfg.use_dims
-        if "segmentation" in self.task:
-            train_dataset_cfg.num_classes = self.dataset_cfg.num_classes
-
-        if self.dataset_cfg.get("val") is not None:
-            val_dataset_cfg = self.dataset_cfg.val
-            val_dataset_cfg.name = self.dataset_cfg.name
-            val_dataset_cfg.task = self.task
-            val_dataset_cfg.input_type = self.dataset_cfg.input_type
-            val_dataset_cfg.use_dims = self.dataset_cfg.use_dims
-            if "segmentation" in self.task:
-                val_dataset_cfg.num_classes = self.dataset_cfg.num_classes
-
+        if val_dataset_cfg is not None:
             train_dataset = build_dataset(train_dataset_cfg)
             val_dataset = build_dataset(val_dataset_cfg)
         else:
@@ -280,8 +282,8 @@ class RunnerBase(object):
             raise ValueError(
                 "batch size must be smaller than total number of data")
 
-        logger.info("Loaded dataset Train: {}".format(len(train_size)))
-        logger.info("Loaded dataset Validation: {}".format(len(val_size)))
+        logger.info("Loaded dataset Train: {}".format(len(train_dataset)))
+        logger.info("Loaded dataset Validation: {}".format(len(val_dataset)))
 
         train_dataloader = DataLoader(
             train_dataset,
@@ -373,13 +375,12 @@ class RunnerBase(object):
             avg_meters (dict[str, any])
         """
         avg_meters = {"loss": dict(), "score": dict()}
+        avg_meters["loss"]["total"] = AverageMeter()
         for tsk in self.task:
             avg_meters["loss"][tsk] = AverageMeter()
             avg_meters["score"][tsk] = dict()
             for mth in list(self.evaluation_cfg[tsk].methods):
                 avg_meters["score"][tsk][mth] = AverageMeter()
-        if len(self.task) > 1:
-            avg_meters["loss"]["total"] = AverageMeter()
 
         return avg_meters
 
@@ -400,6 +401,9 @@ class RunnerBase(object):
             losses (dict[str, torch.Tensor])
             scores (dict[str, float])
         """
+        avg_meters["loss"]["total"].update(
+            losses["total"].item(), self.batch_size)
+
         for tsk in self.task:
             avg_meters["loss"][tsk].update(
                 losses[tsk].item(), self.batch_size)
@@ -409,25 +413,30 @@ class RunnerBase(object):
                 score_avg_meters[mth].update(
                     score_dict[mth], self.batch_size)
 
-    def _logging_results(self, avg_meters, epoch=None):
+    def _logging_results(self, avg_meters):
         """Logging results
         Args:
             avg_meters (dict[str, AverageMeter])
-            epoch (int, optiontal)
         """
-        loss_msg = ""
+        loss_msg = "total: {}\n".format(avg_meters["loss"]["total"].val)
         score_msg = ""
         for tsk in self.task:
-            loss_msg += "[{}]: {}\n".format(
+            loss_msg += "{}: {}\n".format(
                 tsk, avg_meters["loss"][tsk].val)
-            score_msg += "[{}]:\n".format(tsk)
+            score_msg += "{}:\n".format(tsk)
             for mth in list(self.evaluation_cfg[tsk].methods):
-                score_msg += "{}: {}\n".format(
+                score_msg += "  [{}]: {}".format(
                     mth, avg_meters["score"][tsk][mth].val)
-        if epoch is not None:
-            logger.info("Epoch: {}\n".format(epoch))
-        logger.info("Loss: \n{}".format(loss_msg))
-        logger.info("Score: \n{}".format(score_msg))
+            score_msg += "\n"
+
+        msg = r"""
+|Epoch|: {}
+|Loss|:
+{}
+|Score|:
+{}
+        """.format(self.epoch, loss_msg, score_msg)
+        logger.info(msg)
 
     def _update_summary_writer(self, train_avg_meters, val_avg_meters, epoch):
         """Update summary writer with AverageMeters()
@@ -436,6 +445,12 @@ class RunnerBase(object):
             val_avg_meters (dict[dict[str, AverageMeters()]])
             epoch (int)
         """
+        self.writer.add_scalars(
+            "toal loss",
+            {"train": train_avg_meters["loss"]["total"].val,
+             "val": val_avg_meters["loss"]["total"].val}, epoch
+        )
+
         for tsk in self.task:
             self.writer.add_scalars(
                 tsk + " loss",

@@ -31,7 +31,10 @@ def imshow_segmentation(
     """
     img = imread(img, img_ord)
 
-    assert len(segmaps.shape) == 3, "expected `segmaps` is in shape NxHxW"
+    if segmaps.ndim != 3:
+        raise ValueError(
+            "expected `segmaps` is in shape NxHxW, but got {} dimensions".format(segmaps.ndim))
+
     if isinstance(segmaps, torch.Tensor):
         segmaps = segmaps.cpu().detach().numpy()
 

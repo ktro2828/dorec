@@ -28,8 +28,11 @@ def imshow_depth(depth_map, thresh=0.5, colorize=False):
     Reutrns:
         np.ndarray: HxWx3 or HxW
     """
-    assert depth_map.ndim in (2, 3), \
-        "shape of depth map must be 2 or 3 dimentioal and have 1 channel in case of 3 dimenion"
+    if depth_map.ndim not in (2, 3):
+        raise ValueError(
+            "shape of depth map must be 2 or \
+                3 dimentioal and have 1 channel in case of 3 dimenion, \
+                    but got {}".format(depth_map.ndim))
 
     if depth_map.ndim == 3:
         ignore_dim = depth_map.shape.index(1)

@@ -6,7 +6,7 @@ import torch
 from torchvision.transforms import ToTensor as ToTensorBase
 from torchvision.transforms import Normalize
 
-from dorec import GT_IMAGE_TYPES
+from dorec import GT_IMAGE_TYPES, TASK_GTMAP
 from dorec.core import TRANSFORMS
 from dorec.core.utils import build_from_cfg
 from dorec.core.ops import normalize_depth
@@ -114,10 +114,11 @@ class Resize(TransformBase):
         """
         data["inputs"] = imresize(data["inputs"], self.size, img_type="image")
 
-        for img_type in GT_IMAGE_TYPES:
-            if data["targets"].get(img_type) is not None:
-                data["targets"][img_type] = imresize(
-                    data["targets"][img_type], self.size, img_type=img_type)
+        for task, item in data["targets"].items():
+            gt_type = TASK_GTMAP[task]
+            if gt_type in GT_IMAGE_TYPES:
+                data["targets"][task] = imresize(
+                    item, self.size, img_type=gt_type)
 
         return data
 
@@ -136,12 +137,11 @@ class ToTensor(TransformBase):
     def __call__(self, data):
         data["inputs"] = self.to_tensor(data["inputs"])
 
-        for img_type in GT_IMAGE_TYPES:
-            if data["targets"].get(img_type) is not None:
-                data["targets"][img_type] = self.to_tensor(
-                    data["targets"][img_type])
-
-        for key, item in data["targets"].items():
-            data["targets"][key] = torch.from_numpy(item)
+        for task, item in data["targets"].items():
+            gt_type = TASK_GTMAP[task]
+            if gt_type in GT_IMAGE_TYPES:
+                data["targets"][task] = self.to_tensor(item)
+            else:
+                data["targets"][task] = torch.from_numpy(item)
 
         return data

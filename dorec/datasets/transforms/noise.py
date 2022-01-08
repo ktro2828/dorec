@@ -5,6 +5,7 @@ import random
 import numpy as np
 from skimage.util import random_noise
 
+from dorec import TASK_GTMAP, GT_GEOMETRY_TYPES
 from dorec.core.utils import TRANSFORMS
 from .base import TransformBase
 
@@ -129,10 +130,12 @@ class RandomErase(TransformBase):
 
             data["inputs"] = img
 
-            if self.occlusion and data["targets"].get("keypoints") is not None:
-                kpts = data["targets"]["keypoints"]
-                indices = (xe <= kpts[:, 0]) * (kpts[:, 0] <= xe + we) * \
-                    (ye <= kpts[:, 1]) * (kpts[:, 1] <= ye + he)
-                data["targets"]["keypoints"][indices] = -1
+            if self.occlusion:
+                for task, item in data["targets"].items():
+                    gt_type = TASK_GTMAP[task]
+                    if gt_type in GT_GEOMETRY_TYPES:
+                        indices = (xe <= item[:, 0]) * (item[:, 0] <= xe + we) * \
+                            (ye <= item[:, 1]) * (item[:, 1] <= ye + he)
+                        data["targets"][task][indices] = -1
 
         return data

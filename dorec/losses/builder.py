@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 from box import Box
-from dorec.core import Config, LOSSES
+from dorec.core import Config
+
+from .task_module import TaskAssignModule
 
 
 def build_loss(cfg):
@@ -19,6 +21,6 @@ def build_loss(cfg):
         raise TypeError(
             "``cfg`` must be a type of Config or Box, but got {}".format(type(cfg)))
 
-    loss = LOSSES.build(loss_cfg)
+    loss = TaskAssignModule(loss_cfg)
 
     return loss

@@ -86,12 +86,9 @@ class _ConfigBase(object):
                 self._evaluation.keys()))
 
         # Check ``loss``
-        if ("name" not in self._loss.keys()):
+        if (set(self._task) != set(self._loss.keys())):
             raise KeyError(
-                "loss must specify 'name', but got {}".format(self._loss.keys()))
-        if len(self._task) > 1 and (set(self._task) >= set(self._loss.keys())):
-            raise KeyError(
-                "in case of tackle multi task, loss must have keys for each task, but got {}".format(self._loss.keys()))
+                "loss must have keys for each task, but got {}".format(self._loss.keys()))
 
         # Check ``optimizer``
         if "name" not in self._optimizer.keys():

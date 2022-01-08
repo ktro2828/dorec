@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from dorec import TASK_MAP
+from dorec import TASK_GTMAP
 from dorec.core import DATASETS
 
 from .bases import TokenDataset2D
@@ -21,23 +21,18 @@ class ImageTaskDataset(TokenDataset2D):
         num_classes (int, optional)
     """
 
-    def __init__(self, task, root, input_type, use_dims, pipelines, num_classes=None):
+    def __init__(self, task, root, input_type, use_dims, pipelines, num_classes=4):
         super(ImageTaskDataset, self).__init__(
             task, root, input_type, use_dims, pipelines)
         if "keypoint" in task:
             raise ValueError("use KeypointTaskDataset()")
-
-        if ("segmentation" in task) and (num_classes is None):
-            raise NotImplementedError(
-                "num_classes is not specified, though segmentation task will be tackled")
         self.num_classes = num_classes
-
         self.transform = build_transforms(pipelines, compose=True)
 
     def _load_targets(self, idx):
         out = {}
         for task in self.task:
-            img_type = TASK_MAP[task]
+            img_type = TASK_GTMAP[task]
             filepath = self.tp.get_filepath(idx, img_type)
             img = load_gt_img(filepath, img_type, num_classes=self.num_classes)
             out[task] = img
