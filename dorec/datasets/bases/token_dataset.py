@@ -5,10 +5,10 @@ import numpy as np
 
 from dorec.core.utils import TokenParser
 
-from .custum_dataset2d import CustumDataset2D
+from .custum_dataset2d import CustomDataset2D
 
 
-class TokenDataset2D(CustumDataset2D):
+class TokenDataset2D(CustomDataset2D):
     """Base dataset class for our token specified style
     Args:
         task (tuple(str))

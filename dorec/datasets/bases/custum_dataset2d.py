@@ -2,10 +2,10 @@
 
 from dorec import INPUT_IMAGE_TYPES
 
-from .base import CustumDatasetBase
+from .base import CustomDatasetBase
 
 
-class CustumDataset2D(CustumDatasetBase):
+class CustomDataset2D(CustomDatasetBase):
     """Abstract base class for Image based Dataset
     Args:
         task (tuple(str))
@@ -16,7 +16,7 @@ class CustumDataset2D(CustumDatasetBase):
     """
 
     def __init__(self, task, root, input_type, use_dims, pipelines):
-        super(CustumDataset2D, self).__init__(
+        super(CustomDataset2D, self).__init__(
             task, root, input_type, use_dims, pipelines)
 
         assert input_type in INPUT_IMAGE_TYPES, \

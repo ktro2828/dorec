@@ -5,8 +5,8 @@ from torch.utils.data import Dataset
 from dorec import TASK_TYPES
 
 
-class CustumDatasetBase(Dataset):
-    """Abstract base class for Dataset custumization
+class CustomDatasetBase(Dataset):
+    """Abstract base class for Dataset customization
     Args:
         task (tuple(str))
         root (str)
@@ -16,6 +16,7 @@ class CustumDatasetBase(Dataset):
     """
 
     def __init__(self, task, root, input_type, use_dims, pipelines):
+        super(CustomDatasetBase, self).__init__()
         assert set(task) <= set(TASK_TYPES)
         self._task = task
         self._root = root
