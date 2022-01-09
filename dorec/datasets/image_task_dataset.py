@@ -24,8 +24,6 @@ class ImageTaskDataset(TokenDataset2D):
     def __init__(self, task, root, input_type, use_dims, pipelines, num_classes=4):
         super(ImageTaskDataset, self).__init__(
             task, root, input_type, use_dims, pipelines)
-        if "keypoint" in task:
-            raise ValueError("use KeypointTaskDataset()")
         self.num_classes = num_classes
         self.transform = build_transforms(pipelines, compose=True)
 

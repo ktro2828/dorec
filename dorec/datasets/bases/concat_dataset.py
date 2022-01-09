@@ -4,8 +4,16 @@ from torch.utils.data import ConcatDataset as _ConcatDataset
 
 
 class ConcatDataset(_ConcatDataset):
+    """
+    Args:
+        datasets (list[Dataset])
+    """
+
     def __init__(self, datasets):
-        super(ConcatDataset, self).__init__(self)
+        super(ConcatDataset, self).__init__(datasets)
+        if not isinstance(datasets, list):
+            raise TypeError("``datasets`` must be a type of list")
+
         self._root = self._cumsum_root(datasets)
         self._task = datasets[0].task
         self._input_type = datasets[0].input_type
@@ -16,7 +24,7 @@ class ConcatDataset(_ConcatDataset):
         """Cumsum root of datasets as list"""
         root = []
         for d in datasets:
-            root.append(datasets.root)
+            root.append(d.root)
         return root
 
     @property

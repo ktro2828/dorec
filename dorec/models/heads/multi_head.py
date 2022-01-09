@@ -12,8 +12,43 @@ from .head_base import HeadBase
 
 
 @HEADS.register()
+class MultiHead(HeadBase):
+    """Head module which has multi head
+    Args:
+        cfg (Box)
+    """
+
+    def __init__(self, cfg):
+        deep_sup = cfg.pop("deep_sup") \
+            if cfg.get("deep_sup") is not None else False
+        fc_dim = cfg.pop("fc_dim")
+        super(MultiHead, self).__init__(deep_sup)
+        self.heads = {}
+        self.task = []
+        for tsk in cfg.keys():
+            head_cfg = cfg[tsk].copy()
+            head_cfg.deep_sup = deep_sup
+            head_cfg.fc_dim = fc_dim
+            self.heads[tsk] = HEADS.build(head_cfg)
+            self.task.append(tsk)
+
+    def forward(self, features, segSize=None):
+        """
+        Args:
+            features (list[torch.Tensor])
+            segSize (tuple[int], optional)
+        Returns:
+            out (tuple[torch.Tensor, list[torch.Tensor]])
+        """
+        out = []
+        for tsk in self.task:
+            out.append(self.heads[tsk](features, segSize))
+        return tuple(out)
+
+
+@HEADS.register()
 class DualHead(HeadBase):
-    """Dual head module
+    """Dual head module which has serialize option
     Args:
         head1 (Box[str, any], dict)
         head2 (Box[str, any], dict)

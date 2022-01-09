@@ -100,6 +100,6 @@ def _ods(pred, target, thresh, omitnans=False):
         pd_ = _apply_threshold(pred, th / 255.0)
         fscores.append(
             mean_fscore(pd_, target, num_classes=2, omitnans=omitnans))
-    ods = max(fscores).item()
+    ods = max(fscores)
 
     return ods
