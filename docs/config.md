@@ -1,6 +1,6 @@
 # Config file
-
-```
+for experiments use config like below,
+```yaml
 # Task
 task <str, sequece[str]>: ...task name(s)
 
@@ -14,6 +14,10 @@ parameters:
         gpu_ids <str, optional>: gpu ids (default: 0)
         batch_size <int, optional>: batch size (default: 1)
     test:
+        device <str, optional>
+        gpu_ids <str, optional>
+        batch_size <int, optional>
+    val: ...``val`` is optional
         device <str, optional>
         gpu_ids <str, optional>
         batch_size <int, optional>
@@ -72,4 +76,12 @@ optimizer:
 scheduler:
     name <str>: ...lr_scheduler name
     **kwargs
+```
+
+for ``augment``, use config shown below,
+```yaml
+task <str, sequence[str]>: ...task name(s)
+root <str>: ...root directory path of dataset
+piplines <list[dict]>: ...transform piplienes
+num_repeat <int>: ...the number of repeating transformation
 ```

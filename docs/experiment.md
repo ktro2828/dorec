@@ -14,6 +14,24 @@ train(cfg)
 $ python tools/train.py --config <CONFIG_FILE> [--checkpoint <CHECKPOINT_FILE>]
 ```
 
+### **Optimizer**
+we support optimizer shown below, they are implemented in `torch.optim` originaly.
+- Adam
+- SGD
+- RMSprop
+- Adadelta
+- AdamW
+
+### **lr_scheduler**
+we support lr_scheduler shown below, they are implemented in `torch.optim.lr_scheduler`
+- MultiStepLR
+- ExponentialLR
+- ReduceLROnPlateau
+- StepLR
+- CosineAnnealingLR
+- CyclicLR
+- LambdaLR
+
 ## Test
 - from API
 ```python
