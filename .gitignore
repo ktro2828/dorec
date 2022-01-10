@@ -130,6 +130,7 @@ dmypy.json
 
 # dorec
 data
+!tests/sample/data
 experiments
 *.pyc
 .vscode
