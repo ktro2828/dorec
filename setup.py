@@ -19,9 +19,8 @@ def _requires_from_file(filename):
 # Version
 here = osp.dirname(osp.abspath(__file__))
 version = next((line.split("=")[1].strip().replace("'", "")
-                for line in open(ops.join(here, "dorec", "__init__.py"))
-                if line.startswith("__version__ = ")),
-               "0.0.1")
+                for line in open(osp.join(here, "dorec", "__init__.py"))
+                if line.startswith("__version__ = ")), "0.0.1")
 
 setup(
     name="dorec",
@@ -33,7 +32,7 @@ setup(
     maintainer_email="ktro310115@gmail.com",
     description="",
     long_description=readme,
-    packages=find_pacages(),
+    packages=find_packages(),
     install_requires=_requires_from_file("requirements/requirements.txt"),
     license="MIT",
     classifiers=[
