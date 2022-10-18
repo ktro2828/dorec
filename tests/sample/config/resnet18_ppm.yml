@@ -1,0 +1,72 @@
+# This is sample of config file
+# Task config
+task: "segmentation"
+
+# Running Parameters
+parameters:
+  work_dir: null
+  checkpoint: null
+  train:
+    max_epoch: 1
+    device: cpu
+    batch_size: 2
+  test:
+    device: cpu
+    batch_size: 1
+  val:
+    device: cpu
+    batch_size: 1
+
+# Mode config
+model:
+  # If use backbone + head
+  backbones:
+    name: ResNet18
+    in_channels: 3
+    max_layer: 4
+    pretrain: true
+  heads:
+    name: PPM
+    num_classes: 4
+    fc_dim: 512
+    deep_sup: false
+  # If use model
+  # name: UNet
+
+# Dataset config
+dataset:
+  name: ImageTaskDataset
+  input_type: rgb
+  use_dims: 3
+  train:
+    root: tests/sample/data/HalfShirt
+    pipelines:
+      - name: Resize
+        size: 256
+      - name: ToTensor
+  test:
+    root: tests/sample/data/HalfShirt
+    pipelines:
+      - name: Resize
+        size: 256
+      - name: ToTensor
+
+# Loss config
+loss:
+  segmentation:
+    name: DiceBCELoss
+    weight: 1.0
+
+# Evaluation config
+evaluation:
+  segmentation:
+    methods: [pxacc, miou, msq]
+
+# Optimizer config
+optimizer:
+  name: Adam
+
+# Scheduler config
+scheduler:
+  name: ExponentialLR
+  gamma: 0.95
